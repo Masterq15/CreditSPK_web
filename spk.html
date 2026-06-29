@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPK Kelayakan Nasabah - Metode SAW (Simple Additive Weighting)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo" onclick="setPage('landing')">
+                <div class="logo-icon">🏦</div>
+                <div class="logo-text">
+                    <span class="brand">KreditSPK</span>
+                    <span class="sub-brand">Sistem Analisis Kelayakan</span>
+                </div>
+            </div>
+            <div class="nav-menu" id="navMenu">
+                <button onclick="setPage('landing')" id="btn-landing">🏠 Beranda</button>
+                <button onclick="setPage('input')" id="btn-input">📝 Input Nasabah</button>
+                <button onclick="setPage('dashboard')" id="btn-dashboard">📊 Dashboard</button>
+                <button onclick="setPage('riwayat')" id="btn-riwayat">📋 Riwayat</button>
+                <button onclick="setPage('settings')" id="btn-settings">⚙️ Pengaturan</button>
+            </div>
+            <button class="btn-cta" onclick="setPage('input')">+ Analisis Baru</button>
+        </div>
+    </nav>
+
+    <main id="app-root"></main>
+
+    <footer class="footer">
+        <div class="footer-title">Sistem Pendukung Keputusan Kelayakan Nasabah dalam Pemberian Kredit Bank</div>
+        <div>Menggunakan Metode SAW (Simple Additive Weighting)</div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
