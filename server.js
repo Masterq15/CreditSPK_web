@@ -14,6 +14,7 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.static(__dirname)); // Serve static files (HTML, CSS, JS)
 
 // Database Connection
 const pool = new Pool({
@@ -32,6 +33,15 @@ pool.connect((err, client, release) => {
         console.log('✅ Connected to PostgreSQL database');
         release();
     }
+});
+
+// ============================================================
+// FRONTEND ROUTE
+// ============================================================
+
+// GET - Serve halaman utama
+app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/spk.html');
 });
 
 // ============================================================

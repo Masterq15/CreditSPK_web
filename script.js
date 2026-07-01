@@ -305,9 +305,10 @@ function renderInput() {
                 
                 nasabahList.push(frontendData);
                 
-                // Hitung hasil khusus untuk data terbaru ini
-                const analisis = runSAW([frontendData]);
-                lastResult = { nasabah: frontendData, hasil: analisis[0] };
+                // Hitung SAW dengan semua data agar normalisasi konsisten
+                const analisis = runSAW(nasabahList);
+                const hasilNasabahBaru = analisis.find(r => r.id === frontendData.id) || analisis[analisis.length - 1];
+                lastResult = { nasabah: frontendData, hasil: hasilNasabahBaru };
                 setPage('hasil');
             } else {
                 alert('Gagal menyimpan data: ' + (await response.json()).error);
