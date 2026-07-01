@@ -311,11 +311,17 @@ function renderInput() {
                 lastResult = { nasabah: frontendData, hasil: hasilNasabahBaru };
                 setPage('hasil');
             } else {
-                alert('Gagal menyimpan data: ' + (await response.json()).error);
+                const errData = await response.json();
+                const errMsg = errData.error || 'Terjadi kesalahan';
+                if (errMsg.includes('NIK') || errMsg.includes('sudah terdaftar')) {
+                    alert('❌ NIK sudah terdaftar di database. Gunakan NIK yang berbeda.');
+                } else {
+                    alert('❌ Gagal menyimpan data: ' + errMsg);
+                }
             }
         } catch (error) {
             console.error('Error saving data:', error);
-            alert('Gagal menyimpan data. Pastikan server backend berjalan.');
+            alert('❌ Tidak dapat terhubung ke server. Pastikan server backend sudah berjalan dengan perintah: npm start');
         }
     };
 }
@@ -323,84 +329,178 @@ function renderInput() {
 function renderHasil() {
     if(!lastResult) { setPage('input'); return; }
     const { nasabah, hasil } = lastResult;
-    
+
     const criteriaLabels = {
         penghasilan: 'Penghasilan',
-        riwayatKredit: 'Riwayat Kredit',
-        statusPekerjaan: 'Status Pekerjaan',
-        lamaBekerja: 'Lama Bekerja',
+        nilai_jaminan: 'Nilai Jaminan',
+        riwayat_kredit: 'Riwayat Kredit',
         tanggungan: 'Tanggungan',
-        jumlahPinjaman: 'Jumlah Pinjaman',
-        jaminan: 'Jaminan'
+        pengeluaran: 'Pengeluaran'
     };
-    
+
+    const statusColor = hasil.status === 'Layak' ? '#10b981' : hasil.status === 'Dipertimbangkan' ? '#f59e0b' : '#ef4444';
+    const statusIcon = hasil.status === 'Layak' ? '✅' : hasil.status === 'Dipertimbangkan' ? '⚠️' : '❌';
+    const riskColor = hasil.risk === 'Rendah' ? '#10b981' : hasil.risk === 'Sedang' ? '#f59e0b' : '#ef4444';
+
+    // Tabel profil nasabah
+    const profileRows = `
+        <tr><td>Nama Lengkap</td><td><b>${nasabah.nama}</b></td></tr>
+        <tr><td>NIK</td><td>${nasabah.nik}</td></tr>
+        <tr><td>Penghasilan/Bulan</td><td>Rp ${Number(nasabah.penghasilan).toLocaleString('id-ID')}</td></tr>
+        <tr><td>Nilai Jaminan/Aset</td><td>Rp ${Number(nasabah.nilai_jaminan).toLocaleString('id-ID')}</td></tr>
+        <tr><td>Riwayat Kredit</td><td>${nasabah.riwayat_kredit} / 100</td></tr>
+        <tr><td>Jumlah Tanggungan</td><td>${nasabah.tanggungan} orang</td></tr>
+        <tr><td>Pengeluaran/Bulan</td><td>Rp ${Number(nasabah.pengeluaran).toLocaleString('id-ID')}</td></tr>
+        <tr><td>Tanggal Analisis</td><td>${new Date(nasabah.created_at || nasabah.tanggal).toLocaleDateString('id-ID', {day:'2-digit', month:'long', year:'numeric'})}</td></tr>
+    `;
+
+    // Tabel detail kriteria
+    let detailRows = '';
+    if (hasil.details) {
+        Object.keys(hasil.details).forEach(key => {
+            const d = hasil.details[key];
+            const label = criteriaLabels[key] || key;
+            const tipe = CRITERIA_TYPE[key] === 'benefit' ? '<span style="color:#10b981">Benefit</span>' : '<span style="color:#ef4444">Cost</span>';
+            detailRows += `
+                <tr>
+                    <td>${label}</td>
+                    <td>${tipe}</td>
+                    <td>${(d.weight * 100).toFixed(0)}%</td>
+                    <td>${Number(d.value).toLocaleString('id-ID')}</td>
+                    <td>${d.normalized.toFixed(4)}</td>
+                    <td><b>${d.weighted.toFixed(4)}</b></td>
+                </tr>
+            `;
+        });
+    }
+
     root.innerHTML = `
         <div class="container">
-            <h1 style="margin-bottom: 24px;">📊 Hasil Analisis Baru</h1>
-            <div class="card" style="text-align: center; border-top: 5px solid ${hasil.status === 'Layak' ? '#10b981' : '#f59e0b'}">
-                <div style="font-size: 50px;">${hasil.status === 'Layak' ? '✅' : '⚠️'}</div>
-                <h2 style="font-size: 32px;">${hasil.status}</h2>
-                <p style="color: var(--text-muted)">Keputusan untuk nasabah <b>${nasabah.nama}</b></p>
-                <div class="grid-4" style="margin-top: 30px;">
-                    <div class="card"><h4>${hasil.creditScore}</h4><p>Credit Score</p></div>
-                    <div class="card"><h4>${hasil.utilityDegree.toFixed(4)}</h4><p>Utility Index</p></div>
-                    <div class="card"><h4>${hasil.risk}</h4><p>Tingkat Risiko</p></div>
+            <h1 style="margin-bottom: 24px;">📊 Hasil Analisis Nasabah</h1>
+
+            <!-- Kartu Keputusan Utama -->
+            <div class="card" style="text-align: center; border-top: 6px solid ${statusColor}; margin-bottom: 24px;">
+                <div style="font-size: 56px; margin-bottom: 8px;">${statusIcon}</div>
+                <h2 style="font-size: 36px; color: ${statusColor}; margin-bottom: 4px;">${hasil.status}</h2>
+                <p style="color: var(--text-muted); font-size: 16px;">Keputusan untuk nasabah <b>${nasabah.nama}</b></p>
+                <div style="display: flex; justify-content: center; gap: 16px; margin-top: 24px; flex-wrap: wrap;">
+                    <div class="card" style="min-width: 130px; padding: 16px;">
+                        <h3 style="font-size: 28px; color: var(--primary);">${hasil.creditScore}</h3>
+                        <p style="color: var(--text-muted);">Credit Score</p>
+                    </div>
+                    <div class="card" style="min-width: 130px; padding: 16px;">
+                        <h3 style="font-size: 28px; color: var(--primary);">${hasil.utilityDegree.toFixed(4)}</h3>
+                        <p style="color: var(--text-muted);">Utility Index</p>
+                    </div>
+                    <div class="card" style="min-width: 130px; padding: 16px;">
+                        <h3 style="font-size: 28px; color: ${riskColor};">${hasil.risk}</h3>
+                        <p style="color: var(--text-muted);">Tingkat Risiko</p>
+                    </div>
                 </div>
-                <button class="btn-cta" style="background: var(--secondary); color: white; margin-top: 20px;" onclick="showCalculationDetails(${hasil.id})">📐 Lihat Detail Perhitungan</button>
-                <button class="btn-cta" style="background: rgba(255,255,255,0.1); color: white; margin-top: 10px; border: 1px solid white;" onclick="setPage('riwayat')">Lihat Semua Riwayat</button>
+                <div style="margin-top: 20px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                    <button class="btn-cta" style="background: var(--secondary); color: white;" onclick="showCalculationDetails(${hasil.id})">📐 Detail Perhitungan</button>
+                    <button class="btn-cta" style="background: #6366f1; color: white;" onclick="generatePDF(${hasil.id})">📄 Export PDF</button>
+                    <button class="btn-cta" style="background: #64748b; color: white;" onclick="setPage('riwayat')">📋 Lihat Riwayat</button>
+                    <button class="btn-cta" style="background: #10b981; color: white;" onclick="setPage('input')">➕ Analisis Baru</button>
+                </div>
             </div>
-            
-            <div class="card" style="margin-top: 24px;">
-                <h3 style="margin-bottom: 16px;">📊 Profil Nasabah (Radar Chart)</h3>
-                <div style="height: 400px; position: relative;">
-                    <canvas id="radarChart"></canvas>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+                <!-- Profil Nasabah -->
+                <div class="card">
+                    <h3 style="margin-bottom: 16px;">👤 Profil Nasabah</h3>
+                    <table style="width: 100%; font-size: 14px;">
+                        <tbody>${profileRows}</tbody>
+                    </table>
+                </div>
+
+                <!-- Radar Chart -->
+                <div class="card">
+                    <h3 style="margin-bottom: 16px;">📡 Radar Kriteria</h3>
+                    <div style="height: 280px; position: relative;">
+                        <canvas id="radarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabel Detail Kriteria -->
+            <div class="card" style="margin-bottom: 24px;">
+                <h3 style="margin-bottom: 16px;">📋 Detail Nilai Kriteria SAW</h3>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; font-size: 13px;">
+                        <thead>
+                            <tr>
+                                <th>Kriteria</th>
+                                <th>Tipe</th>
+                                <th>Bobot</th>
+                                <th>Nilai Input</th>
+                                <th>Normalisasi</th>
+                                <th>Nilai Terbobot</th>
+                            </tr>
+                        </thead>
+                        <tbody>${detailRows}</tbody>
+                        <tfoot>
+                            <tr style="background: #f0f9ff;">
+                                <td colspan="5" style="text-align: right; font-weight: bold;">Total Utility Index:</td>
+                                <td style="font-weight: bold; color: var(--primary); font-size: 15px;">${hasil.utilityDegree.toFixed(4)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Keterangan Threshold -->
+            <div class="card" style="background: #f0f9ff; border-left: 4px solid var(--primary);">
+                <h4 style="margin-bottom: 10px;">📚 Keterangan Keputusan</h4>
+                <div style="display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px;">
+                    <span style="padding: 6px 14px; background: #10b981; color: white; border-radius: 20px;">✅ Layak: Utility Index ≥ 0.65</span>
+                    <span style="padding: 6px 14px; background: #f59e0b; color: white; border-radius: 20px;">⚠️ Dipertimbangkan: 0.45 – 0.64</span>
+                    <span style="padding: 6px 14px; background: #ef4444; color: white; border-radius: 20px;">❌ Tidak Layak: < 0.45</span>
                 </div>
             </div>
         </div>
     `;
-    
-    // Create Radar Chart
-    const radarData = Object.keys(hasil.normalizationDetails).map(key => ({
-        label: criteriaLabels[key],
-        value: hasil.normalizationDetails[key].normalized,
-        weight: hasil.normalizationDetails[key].weight
-    }));
-    
-    new Chart(document.getElementById('radarChart'), {
-        type: 'radar',
-        data: {
-            labels: radarData.map(d => d.label),
-            datasets: [{
-                label: 'Skor Normalisasi',
-                data: radarData.map(d => d.value),
-                backgroundColor: 'rgba(37, 99, 235, 0.2)',
-                borderColor: 'rgba(37, 99, 235, 1)',
-                borderWidth: 2,
-                pointBackgroundColor: 'rgba(37, 99, 235, 1)',
-                pointBorderColor: '#fff',
-                pointHoverBackgroundColor: '#fff',
-                pointHoverBorderColor: 'rgba(37, 99, 235, 1)'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                r: {
-                    beginAtZero: true,
-                    max: 1,
-                    ticks: {
-                        stepSize: 0.2
-                    }
-                }
+
+    // Radar Chart - gunakan hasil.details
+    if (hasil.details) {
+        const keys = Object.keys(hasil.details);
+        const labels = keys.map(k => criteriaLabels[k] || k);
+        const values = keys.map(k => hasil.details[k].normalized);
+
+        new Chart(document.getElementById('radarChart'), {
+            type: 'radar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Skor Normalisasi',
+                    data: values,
+                    backgroundColor: 'rgba(37, 99, 235, 0.15)',
+                    borderColor: 'rgba(37, 99, 235, 1)',
+                    borderWidth: 2,
+                    pointBackgroundColor: 'rgba(37, 99, 235, 1)',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: 'rgba(37, 99, 235, 1)',
+                    pointRadius: 5
+                }]
             },
-            plugins: {
-                legend: {
-                    position: 'top'
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        max: 1,
+                        ticks: { stepSize: 0.2, font: { size: 10 } },
+                        pointLabels: { font: { size: 11 } }
+                    }
+                },
+                plugins: {
+                    legend: { position: 'top' }
                 }
             }
-        }
-    });
+        });
+    }
 }
 
 function showCalculationDetails(id) {
